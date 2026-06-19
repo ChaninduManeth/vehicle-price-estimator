@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 
+from backend.app.estimator import estimate_vehicle_price
+from backend.app.schemas import VehicleEstimateRequest, VehicleEstimateResponse
+
 app = FastAPI(
     title="Vehicle Price Estimator API",
     description="Backend API for estimating used vehicle market values.",
@@ -22,3 +25,9 @@ def health_check() -> dict[str, str]:
     return {
         "status": "healthy",
     }
+
+
+@app.post("/estimate", response_model=VehicleEstimateResponse)
+def estimate_price(vehicle: VehicleEstimateRequest) -> VehicleEstimateResponse:
+    """Estimate the market value of a used vehicle."""
+    return estimate_vehicle_price(vehicle)
