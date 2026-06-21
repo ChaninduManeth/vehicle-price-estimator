@@ -1,66 +1,129 @@
-from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
 
 from backend.app.schemas import VehicleEstimateRequest, VehicleEstimateResponse
 
 
-def estimate_vehicle_price(vehicle: VehicleEstimateRequest) -> VehicleEstimateResponse:
-    """
-    Estimate a used vehicle price using a simple rule-based baseline.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "sample_vehicles.csv"
 
-    This is not the final machine-learning model.
-    It is the first working version so the API can return realistic-looking results.
-    """
 
-    current_year = datetime.now().year
-    vehicle_age = current_year - vehicle.year
+def load_vehicle_data() -> pd.DataFrame:
+    """Load the sample vehicle dataset."""
+    return pd.read_csv(DATASET_PATH)
 
-    base_price = 30000
-    explanation = []
 
-    # Age adjustment
-    age_deduction = vehicle_age * 1200
-    base_price -= age_deduction
-    explanation.append(f"Vehicle age reduced the estimate by approximately ${age_deduction}.")
-
-    # Odometer adjustment
-    odometer_deduction = int(vehicle.odometer / 10000) * 500
-    base_price -= odometer_deduction
-    explanation.append(
-        f"Odometer reading reduced the estimate by approximately ${odometer_deduction}."
-    )
-
-    # Condition adjustment
-    condition_adjustments = {
-        "Excellent": 3000,
-        "Good": 1000,
-        "Average": -1000,
-        "Poor": -3000,
+def get_condition_adjustment(condition: str) -> int:
+    """Return a price adjustment based on vehicle condition."""
+    adjustments = {
+        "Excellent": 2000,
+        "Good": 0,
+        "Average": -1500,
+        "Poor": -3500,
     }
 
-    condition_adjustment = condition_adjustments.get(vehicle.condition, 0)
-    base_price += condition_adjustment
+    return adjustments.get(condition, 0)
 
-    if condition_adjustment >= 0:
+
+def estimate_vehicle_price(vehicle: VehicleEstimateRequest) -> VehicleEstimateResponse:
+    """
+    Estimate a used vehicle price using similar records from the sample dataset.
+
+    This is still a baseline version, not the final machine-learning model.
+    """
+
+    data = load_vehicle_data()
+
+    make = vehicle.make.lower()
+    model = vehicle.model.lower()
+
+    same_make_model = data[
+        (data["make"].str.lower() == make)
+        & (data["model"].str.lower() == model)
+    ]
+
+    same_make = data[data["make"].str.lower() == make]
+
+    explanation = []
+
+    if len(same_make_model) > 0:
+        comparable_data = same_make_model
+        confidence = "Medium"
+        explanation.append(
+            f"Found {len(comparable_data)} similar vehicles with the same make and model."
+        )
+    elif len(same_make) > 0:
+        comparable_data = same_make
+        confidence = "Low"
+        explanation.append(
+            f"No exact model match found, so the estimate used {len(comparable_data)} vehicles from the same make."
+        )
+    else:
+        comparable_data = data
+        confidence = "Low"
+        explanation.append(
+            "No matching make or model found, so the estimate used the overall sample dataset."
+        )
+
+    average_price = comparable_data["price"].mean()
+    average_year = comparable_data["year"].mean()
+    average_odometer = comparable_data["odometer"].mean()
+
+    estimated_price = average_price
+
+    # Year adjustment
+    year_difference = vehicle.year - average_year
+    year_adjustment = year_difference * 1000
+    estimated_price += year_adjustment
+
+    if year_adjustment > 0:
+        explanation.append(
+            f"Newer vehicle year increased the estimate by approximately ${int(year_adjustment)}."
+        )
+    elif year_adjustment < 0:
+        explanation.append(
+            f"Older vehicle year reduced the estimate by approximately ${abs(int(year_adjustment))}."
+        )
+
+    # Odometer adjustment
+    odometer_difference = vehicle.odometer - average_odometer
+    odometer_adjustment = -(odometer_difference / 10000) * 400
+    estimated_price += odometer_adjustment
+
+    if odometer_adjustment > 0:
+        explanation.append(
+            f"Lower odometer reading increased the estimate by approximately ${int(odometer_adjustment)}."
+        )
+    elif odometer_adjustment < 0:
+        explanation.append(
+            f"Higher odometer reading reduced the estimate by approximately ${abs(int(odometer_adjustment))}."
+        )
+
+    # Condition adjustment
+    condition_adjustment = get_condition_adjustment(vehicle.condition)
+    estimated_price += condition_adjustment
+
+    if condition_adjustment > 0:
         explanation.append(
             f"{vehicle.condition} condition increased the estimate by approximately ${condition_adjustment}."
         )
-    else:
+    elif condition_adjustment < 0:
         explanation.append(
             f"{vehicle.condition} condition reduced the estimate by approximately ${abs(condition_adjustment)}."
         )
+    else:
+        explanation.append(f"{vehicle.condition} condition kept the estimate unchanged.")
 
     # Transmission adjustment
     if vehicle.transmission.lower() == "automatic":
-        base_price += 500
+        estimated_price += 500
         explanation.append("Automatic transmission slightly increased the estimate.")
 
-    # Make sure price does not go too low
-    estimated_price = max(base_price, 2000)
+    estimated_price = max(int(round(estimated_price, -2)), 2000)
 
     min_price = int(estimated_price * 0.9)
     max_price = int(estimated_price * 1.1)
-
-    confidence = "Low"
 
     return VehicleEstimateResponse(
         estimated_price=estimated_price,
