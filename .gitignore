@@ -37,3 +37,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Dataset files
+data/raw/*
+data/processed/*
+
+# Keep folder structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
