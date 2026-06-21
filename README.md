@@ -5,7 +5,7 @@ vehicle based on its specifications, condition and market information.
 
 ## Project Status
 
-Early development — backend foundation completed.
+Early development — backend foundation completed and the first baseline estimation endpoint is working.
 
 ## Planned Technology Stack
 
@@ -17,6 +17,17 @@ Early development — backend foundation completed.
 - Azure
 - GitHub Actions
 
+## Current Backend Features
+
+- FastAPI backend setup
+- Health-check endpoint
+- Vehicle price estimation endpoint
+- Request and response validation using Pydantic schemas
+- Rule-based baseline estimator
+- Price range output
+- Confidence level output
+- Explanation of pricing factors
+
 ## Planned Features
 
 - Vehicle information form
@@ -24,7 +35,10 @@ Early development — backend foundation completed.
 - Estimated price range
 - Confidence level
 - Explanation of important pricing factors
+- Dataset-based comparison logic
+- Machine-learning price prediction
 - Similar vehicle comparisons
+- Cloud deployment
 
 ## Repository Structure
 
@@ -42,8 +56,11 @@ Early development — backend foundation completed.
 - [x] Initial project structure created
 - [x] FastAPI backend started
 - [x] Health-check endpoint added
-- [ ] Vehicle input schema
-- [ ] Baseline price estimator
-- [ ] React frontend
+- [x] Vehicle input schema
+- [x] Baseline price estimator
+- [ ] Kaggle dataset added locally
+- [ ] Initial data analysis notebook
+- [ ] Data cleaning pipeline
 - [ ] Machine-learning model
+- [ ] React frontend
 - [ ] Cloud deployment
